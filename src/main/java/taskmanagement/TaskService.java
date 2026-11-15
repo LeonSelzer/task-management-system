@@ -106,6 +106,44 @@ public class TaskService {
         return comments;
     }
 
+    public TaskResponds patchTaskTitleAndDescription(Long taskId, String author, String newTitle, String newDescription) {
+        AppTask task = checkIfTaskExistsAndCorrectOwner(taskId,author);
+        task.setDescription(newDescription);
+        task.setTitle(newTitle);
+
+        taskRepository.saveAndFlush(task);
+        return new TaskResponds(task);
+    }
+
+    public TaskResponds patchTaskDescription(Long taskId, String author, String newDescription) {
+        AppTask task = checkIfTaskExistsAndCorrectOwner(taskId,author);
+        task.setDescription(newDescription);
+
+        taskRepository.saveAndFlush(task);
+        return new TaskResponds(task);
+    }
+
+    public TaskResponds patchTaskTitle(Long taskId, String author, String newTitle) {
+        AppTask task = checkIfTaskExistsAndCorrectOwner(taskId,author);
+        task.setTitle(newTitle);
+
+        taskRepository.saveAndFlush(task);
+        return new TaskResponds(task);
+    }
+
+    private AppTask checkIfTaskExistsAndCorrectOwner(Long taskId, String author) {
+        if(!taskRepository.existsById(taskId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Die angegebene Task existiert nicht");
+
+        AppTask task = getTaskById(taskId);
+
+        String owner = normalizeEmail(task.getOwner().getEmail());
+        String possibleChanger = normalizeEmail(author);
+
+        if(!owner.equals(possibleChanger)) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Nur der Owner kann den Title oder Description ändern");
+
+        return task;
+    }
+
 
     private String normalizeEmail(String email) {
         return email.toLowerCase(Locale.ROOT);
