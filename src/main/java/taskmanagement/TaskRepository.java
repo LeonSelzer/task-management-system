@@ -18,6 +18,5 @@ public interface TaskRepository extends JpaRepository<AppTask,Long> {
 
     public Iterable<AppTask> findAllByOwner_EmailAndAssigneeIsNull(String owner, Sort sort);
 
-    public Optional<String> findOwnerById(Long id);
 
 }

@@ -134,7 +134,7 @@ public class TaskService {
 
     public void deleteComment(Long taskId, Long commentId, String author) {
         TaskComment taskComment = getCommentByIdAndTaskId(commentId,taskId);
-        String taskOwner = getOwnerByTaskId(taskId);
+        String taskOwner = taskComment.getTask().getOwner().getEmail();
         if(!taskComment.getAuthor().equals(author) && !taskOwner.equals(author)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Nur der Autor der Task oder des Kommentares dürfen diesen ändern");
 
         taskCommentRepository.delete(taskComment);
@@ -194,11 +194,6 @@ public class TaskService {
                 ));
     }
 
-    private TaskComment getCommentById(Long id) {
-        return taskCommentRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Der Kommentar mit der " + id + " existiert nicht "));
-    }
-
     private AppUser getOwner(String email) {
         return  userRepository.findByEmail(normalizeEmail(email))
                 .orElseThrow(
@@ -210,8 +205,4 @@ public class TaskService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Der Task mit der Id " + taskId  + " existiert nicht oder der Kommentar mit der Id " + commentId + " gehört nicht zu der Task" ));
     }
 
-    private String getOwnerByTaskId(Long taskId) {
-        return taskRepository.findOwnerById(taskId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Der Kommentar mit der " + taskId + " existiert nicht "));
-    }
 }
