@@ -106,40 +106,47 @@ public class TaskService {
         return comments;
     }
 
-    public TaskResponds patchTaskTitleAndDescription(Long taskId, String author, String newTitle, String newDescription) {
+    public TaskResponds patchTask(Long taskId, String author, Optional<String> title, Optional<String> description) {
+        if(title.isEmpty() && description.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Es muss mindestens ein Titel oder eine Dewscription angegeben werden");
+        if(description.isPresent() && description.get().isBlank() || title.isPresent() && title.get().isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Es dürfen keine leeren Angaben gemacht werden");
+
         AppTask task = checkIfTaskExistsAndCorrectOwner(taskId,author);
-        task.setDescription(newDescription);
-        task.setTitle(newTitle);
+
+        title.ifPresent(task::setTitle);
+        description.ifPresent(task::setDescription);
 
         taskRepository.saveAndFlush(task);
         return new TaskResponds(task);
     }
 
-    public TaskResponds patchTaskDescription(Long taskId, String author, String newDescription) {
-        AppTask task = checkIfTaskExistsAndCorrectOwner(taskId,author);
-        task.setDescription(newDescription);
-
-        taskRepository.saveAndFlush(task);
-        return new TaskResponds(task);
+    public void deleteTask(Long taskId, String author) {
+        taskRepository.delete(checkIfTaskExistsAndCorrectOwner(taskId,author));
     }
 
-    public TaskResponds patchTaskTitle(Long taskId, String author, String newTitle) {
-        AppTask task = checkIfTaskExistsAndCorrectOwner(taskId,author);
-        task.setTitle(newTitle);
+    public TaskCommentResponds changeComment(Long taskId, Long commentId, String author, String comment) {
+        TaskComment taskComment = getCommentByIdAndTaskId(commentId,taskId);
+        if(!taskComment.getAuthor().equals(author)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Nur der Autor des Kommentars kann diesen ändern");
 
-        taskRepository.saveAndFlush(task);
-        return new TaskResponds(task);
+        taskComment.setText(comment);
+        taskCommentRepository.saveAndFlush(taskComment);
+        return new TaskCommentResponds(taskComment);
+    }
+
+    public void deleteComment(Long taskId, Long commentId, String author) {
+        TaskComment taskComment = getCommentByIdAndTaskId(commentId,taskId);
+        String taskOwner = getOwnerByTaskId(taskId);
+        if(!taskComment.getAuthor().equals(author) && !taskOwner.equals(author)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Nur der Autor der Task oder des Kommentares dürfen diesen ändern");
+
+        taskCommentRepository.delete(taskComment);
     }
 
     private AppTask checkIfTaskExistsAndCorrectOwner(Long taskId, String author) {
-        if(!taskRepository.existsById(taskId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Die angegebene Task existiert nicht");
-
         AppTask task = getTaskById(taskId);
 
         String owner = normalizeEmail(task.getOwner().getEmail());
         String possibleChanger = normalizeEmail(author);
 
-        if(!owner.equals(possibleChanger)) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Nur der Owner kann den Title oder Description ändern");
+        if(!owner.equals(possibleChanger)) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
 
         return task;
     }
@@ -187,9 +194,24 @@ public class TaskService {
                 ));
     }
 
+    private TaskComment getCommentById(Long id) {
+        return taskCommentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Der Kommentar mit der " + id + " existiert nicht "));
+    }
+
     private AppUser getOwner(String email) {
         return  userRepository.findByEmail(normalizeEmail(email))
                 .orElseThrow(
                         () -> new UsernameNotFoundException("Der Benutzer existiert nicht"));
+    }
+
+    private TaskComment getCommentByIdAndTaskId(Long commentId,Long taskId) {
+        return taskCommentRepository.findByIdAndTaskId(commentId,taskId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Der Task mit der Id " + taskId  + " existiert nicht oder der Kommentar mit der Id " + commentId + " gehört nicht zu der Task" ));
+    }
+
+    private String getOwnerByTaskId(Long taskId) {
+        return taskRepository.findOwnerById(taskId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Der Kommentar mit der " + taskId + " existiert nicht "));
     }
 }

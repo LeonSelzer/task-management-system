@@ -6,10 +6,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface TaskCommentRepository extends JpaRepository<TaskComment,Long> {
 
     public Iterable<TaskComment> findAllByTaskId(Long task_id, Sort sort);
+
+    public Optional<TaskComment> findByIdAndTaskId(Long comment_id, Long task_id);
 
 
     interface CommentCount {

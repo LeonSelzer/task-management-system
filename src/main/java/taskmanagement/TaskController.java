@@ -63,23 +63,26 @@ public class TaskController {
 
     @PatchMapping("/api/tasks/{taskId}")
     public ResponseEntity<TaskResponds> patchTask(@PathVariable("taskId") Long taskId, @RequestBody TaskPatchRequest patchRequest, Authentication authentication) {
-        Optional<String> potentialNewTitle = patchRequest.title();
-        Optional<String> potentialNewDescription = patchRequest.description();
+        return ResponseEntity.ok(service.patchTask(taskId,authentication.getName(),patchRequest.title(),patchRequest.description()));
+    }
 
-        if(potentialNewDescription.isEmpty() && potentialNewTitle.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Es muss mindestens ein Titel oder eine Dewscription angegeben werden");
+    @DeleteMapping("/api/tasks/{taskId}")
+    public ResponseEntity<Void> deleteTask(@PathVariable("taskId") Long taskId, Authentication authentication) {
+        service.deleteTask(taskId, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
 
-        if(potentialNewDescription.isPresent() && potentialNewDescription.get().isBlank() || potentialNewTitle.isPresent() && potentialNewTitle.get().isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Es dürfen keine leeren Angaben gemacht werden");
-
-        if(potentialNewDescription.isPresent() && potentialNewTitle.isPresent()) {
-            return ResponseEntity.ok(service.patchTaskTitleAndDescription(taskId,authentication.getName(),potentialNewTitle.get(),potentialNewDescription.get()));
-        }
-
-        return potentialNewDescription.map(s -> ResponseEntity.ok(service.patchTaskDescription(taskId, authentication.getName(), s))).orElseGet(() -> ResponseEntity.ok(service.patchTaskTitle(taskId, authentication.getName(), potentialNewTitle.get())));
-
+    @PatchMapping("/api/tasks/{taskId}/comments/{commentId}")
+    public ResponseEntity<TaskCommentResponds> changeComment(@PathVariable("taskId") Long taskId, @PathVariable("commentId") Long commentId, Authentication authentication, @Valid @RequestBody TaskCommentRequest taskCommentRequest) {
+        return ResponseEntity.ok(service.changeComment(taskId,commentId,authentication.getName(),taskCommentRequest.text()));
     }
 
 
-
+    @DeleteMapping("/api/tasks/{taskId}/comments/{commentId}")
+    public ResponseEntity<Void> deleteComment(@PathVariable("taskId") Long taskId, @PathVariable("commentId") Long commentId, Authentication authentication) {
+        service.deleteComment(taskId,commentId,authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
 
     public record TaskPatchRequest(Optional<String> title, Optional<String> description) {}
 

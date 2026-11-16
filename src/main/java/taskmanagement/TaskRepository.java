@@ -3,6 +3,7 @@ package taskmanagement;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
 
 
 public interface TaskRepository extends JpaRepository<AppTask,Long> {
@@ -16,5 +17,7 @@ public interface TaskRepository extends JpaRepository<AppTask,Long> {
     public Iterable<AppTask> findAllByAssigneeIsNull(Sort sort);
 
     public Iterable<AppTask> findAllByOwner_EmailAndAssigneeIsNull(String owner, Sort sort);
+
+    public Optional<String> findOwnerById(Long id);
 
 }

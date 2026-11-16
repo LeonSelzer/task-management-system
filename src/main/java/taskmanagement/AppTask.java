@@ -25,7 +25,7 @@ public class AppTask {
 
     private String assignee;
 
-    @OneToMany(mappedBy = "task")
+    @OneToMany(mappedBy = "task", cascade = CascadeType.REMOVE)
     private List<TaskComment> comments = new ArrayList<>();
 
     protected AppTask(){}
