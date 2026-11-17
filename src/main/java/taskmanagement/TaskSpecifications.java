@@ -21,12 +21,6 @@ public final class TaskSpecifications {
     }
 
 
-
-    public static Specification<AppTask> isNotOverdue() {
-        return ((root, query, criteriaBuilder) -> criteriaBuilder.
-                or(criteriaBuilder.greaterThan(root.get("dueDate"), LocalDate.now()), criteriaBuilder.equal(root.get("state"),State.COMPLETED)));
-    }
-
     public static Specification<AppTask> isOverdue() {
         return ((root, query, criteriaBuilder) -> criteriaBuilder.
                 and(criteriaBuilder.isNotNull(root.get("dueDate")),

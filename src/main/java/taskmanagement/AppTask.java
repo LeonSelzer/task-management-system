@@ -19,6 +19,7 @@ public class AppTask {
 
     private String description;
 
+    @Enumerated(value = EnumType.STRING)
     private State state;
 
     @ManyToOne
@@ -31,7 +32,7 @@ public class AppTask {
     private List<TaskComment> comments = new ArrayList<>();
 
     private LocalDate dueDate;
-
+    @Enumerated(value = EnumType.STRING)
     private Priority priority;
 
     protected AppTask(){}

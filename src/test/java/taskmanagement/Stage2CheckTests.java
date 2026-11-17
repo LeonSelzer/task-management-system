@@ -234,6 +234,16 @@ class Stage2CheckTests {
                 .andExpect(jsonPath("$[*].overdue", not(hasItem(true))));
     }
 
+    @Test @DisplayName("5.5b ?overdue=false enthält Tasks ohne Datum und mit Datum heute")
+    void filterOverdueFalseIncludesNoDateAndToday() throws Exception {
+        String o = user();
+        String noDate = task(o, "");
+        String today = task(o, "\"due_date\":\"" + TODAY + "\"");
+        String future = task(o, "\"due_date\":\"" + TODAY.plusDays(3) + "\"");
+        list(o, "author", o, "overdue", "false").andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id", hasItems(noDate, today, future)));
+    }
+
     @Test @DisplayName("5.6 Kombination assignee + priority + overdue")
     void filterCombined() throws Exception {
         String o = user(); String a = user();
@@ -280,3 +290,4 @@ class Stage2CheckTests {
         list(o, "author", o).andExpect(jsonPath("$[0].id").value(second)).andExpect(jsonPath("$[1].id").value(first));
     }
 }
+
