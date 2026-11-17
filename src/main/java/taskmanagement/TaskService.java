@@ -43,7 +43,7 @@ public class TaskService {
         if(priority.isPresent()) spec = spec.and(TaskSpecifications.hasPriority(priority.get()));
         if(overdue.isPresent()) {
             if(overdue.get()) spec = spec.and(TaskSpecifications.isOverdue());
-            else spec = Specification.not(TaskSpecifications.isOverdue());
+            else spec = spec.and(Specification.not(TaskSpecifications.isOverdue()));
         }
 
         return toResponses(taskRepository.findAll(spec,Sort.by("id").descending()));

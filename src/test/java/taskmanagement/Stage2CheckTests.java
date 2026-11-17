@@ -244,6 +244,16 @@ class Stage2CheckTests {
                 .andExpect(jsonPath("$[*].id", hasItems(noDate, today, future)));
     }
 
+    @Test @DisplayName("5.5c ?overdue=false kombiniert mit author liefert nur Tasks dieses Autors")
+    void filterOverdueFalseKeepsOtherFilters() throws Exception {
+        String o1 = user(); String o2 = user();
+        String mine = task(o1, "");
+        task(o2, "");
+        list(o1, "author", o1, "overdue", "false").andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1))).andExpect(jsonPath("$[0].id").value(mine));
+        list(o1, "author", o1, "priority", "HIGH", "overdue", "false").andExpect(jsonPath("$", hasSize(0)));
+    }
+
     @Test @DisplayName("5.6 Kombination assignee + priority + overdue")
     void filterCombined() throws Exception {
         String o = user(); String a = user();
