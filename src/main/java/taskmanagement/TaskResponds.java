@@ -34,7 +34,7 @@ public class TaskResponds {
         this.total_comments = totalComments;
         this.dueDate = task.getDueDate();
         this.priority = task.getPriority();
-        this.overdue = dueDate.isBefore(LocalDate.now()) && !status.equals(State.COMPLETED);
+        this.overdue = task.isOverdue();
     }
 
     public TaskResponds(AppTask task) {
@@ -46,7 +46,7 @@ public class TaskResponds {
         this.assignee = task.getAssignee() == null ? "none" : task.getAssignee();
         this.dueDate = task.getDueDate();
         this.priority = task.getPriority();
-        this.overdue = dueDate.isBefore(LocalDate.now()) && !status.equals(State.COMPLETED);
+        this.overdue = task.isOverdue();
     }
 
     public String getId() {

@@ -46,14 +46,9 @@ public class AppTask {
         this.dueDate = null;
     }
 
-    public AppTask(String title, State state, String description, AppUser owner,String assignee,LocalDate dueDate, Priority priority) {
-        this.title = title;
-        this.state = state;
-        this.description = description;
-        this.owner = owner;
-        this.assignee = assignee;
-        this.dueDate = dueDate;
-        this.priority = priority;
+    public boolean isOverdue() {
+        if(dueDate == null) return false;
+        return (dueDate.isBefore(LocalDate.now()) && !state.equals(State.COMPLETED));
     }
 
     public Long getId() {

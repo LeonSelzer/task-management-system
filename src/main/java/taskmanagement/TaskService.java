@@ -33,9 +33,18 @@ public class TaskService {
         String assigneeMail = assignee.map(this::normalizeEmail).orElse(null);
 
         if(mail != null) spec = spec.and(TaskSpecifications.hasOwner(mail));
-        if(assigneeMail != null) spec = spec.and(TaskSpecifications.hasAssignee(assigneeMail));
+        if(assigneeMail != null) {
+            if(NO_ASSIGNEE.equals(assigneeMail)) {
+                spec = spec.and(TaskSpecifications.hasNoAssignee());
+            }else {
+                spec = spec.and(TaskSpecifications.hasAssignee(assigneeMail));
+            }
+        }
         if(priority.isPresent()) spec = spec.and(TaskSpecifications.hasPriority(priority.get()));
-        if(overdue.isPresent()) spec = spec.and(TaskSpecifications.isOverdue());
+        if(overdue.isPresent()) {
+            if(overdue.get()) spec = spec.and(TaskSpecifications.isOverdue());
+            else spec = spec.and(TaskSpecifications.isNotOverdue());
+        }
 
         return toResponses(taskRepository.findAll(spec,Sort.by("id").descending()));
 
@@ -44,7 +53,6 @@ public class TaskService {
     }
 
     public TaskResponds createTask(String title,String description, String email, Optional<LocalDate> dueDate, Optional<Priority> priority) {
-        if(dueDate.isPresent() && dueDate.get().isBefore(LocalDate.now())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Due date kann nicht vor dem jetzigen Datum sein");
         AppUser owner = getOwner(email);
         AppTask task = new AppTask(title,State.CREATED, description,owner);
         dueDate.ifPresent(task::setDueDate);

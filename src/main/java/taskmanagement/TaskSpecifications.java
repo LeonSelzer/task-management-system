@@ -16,8 +16,22 @@ public final class TaskSpecifications {
         return ((root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("assignee"),email));
     }
 
+    public static Specification<AppTask> hasNoAssignee() {
+        return (((root, query, criteriaBuilder) -> criteriaBuilder.isNull(root.get("assignee"))));
+    }
+
+
+
+    public static Specification<AppTask> isNotOverdue() {
+        return ((root, query, criteriaBuilder) -> criteriaBuilder.
+                or(criteriaBuilder.greaterThan(root.get("dueDate"), LocalDate.now()), criteriaBuilder.equal(root.get("state"),State.COMPLETED)));
+    }
+
     public static Specification<AppTask> isOverdue() {
-        return ((root, query, criteriaBuilder) -> criteriaBuilder.lessThan(root.get("dueDate"), LocalDate.now()));
+        return ((root, query, criteriaBuilder) -> criteriaBuilder.
+                and(criteriaBuilder.isNotNull(root.get("dueDate")),
+                        criteriaBuilder.and(criteriaBuilder.lessThan(root.get("dueDate"), LocalDate.now()),
+                                criteriaBuilder.notEqual(root.get("state"),State.COMPLETED))));
     }
 
     public static Specification<AppTask> hasPriority(Priority priority) {
