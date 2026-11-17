@@ -2,11 +2,13 @@ package taskmanagement;
 
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.*;
 
 @Service
@@ -24,37 +26,32 @@ public class TaskService {
         this.taskCommentRepository = taskCommentRepository;
     }
 
-    public List<TaskResponds> getAllTasks() {
-        return toResponses(taskRepository.findAll(Sort.by("id").descending()));
+    public List<TaskResponds> getTasks(Optional<String> email, Optional<String> assignee, Optional<Priority> priority, Optional<Boolean> overdue) {
+        Specification<AppTask> spec = Specification.unrestricted();
+
+        String mail = email.map(this::normalizeEmail).orElse(null);
+        String assigneeMail = assignee.map(this::normalizeEmail).orElse(null);
+
+        if(mail != null) spec = spec.and(TaskSpecifications.hasOwner(mail));
+        if(assigneeMail != null) spec = spec.and(TaskSpecifications.hasAssignee(assigneeMail));
+        if(priority.isPresent()) spec = spec.and(TaskSpecifications.hasPriority(priority.get()));
+        if(overdue.isPresent()) spec = spec.and(TaskSpecifications.isOverdue());
+
+        return toResponses(taskRepository.findAll(spec,Sort.by("id").descending()));
+
+
+
     }
 
-    public List<TaskResponds> getAllTasksByOwner(String email) {
-        String owner = normalizeEmail(email);
-        return toResponses(taskRepository.findAllByOwner_Email(owner, Sort.by("id").descending()));
-    }
-
-    public List<TaskResponds> getAllTasksByAssignee(String email) {
-        Sort sort = Sort.by("id").descending();
-        if(NO_ASSIGNEE.equals(email)) {
-            return toResponses(taskRepository.findAllByAssigneeIsNull(sort));
-        }
-        return toResponses(taskRepository.findAllByAssignee(normalizeEmail(email), sort));
-    }
-
-    public List<TaskResponds> getAllTasksByOwnerAndAssignee(String owner, String assignee ) {
-        String normalizedOwner = normalizeEmail(owner);
-        Sort sort = Sort.by("id").descending();
-        if(NO_ASSIGNEE.equals(assignee)) {
-            return toResponses(taskRepository.findAllByOwner_EmailAndAssigneeIsNull(normalizedOwner, sort));
-        }
-        return toResponses(taskRepository.findAllByOwner_EmailAndAssignee(normalizedOwner, normalizeEmail(assignee), sort));
-    }
-
-
-
-    public TaskResponds createTask(TaskController.TaskInfo info, String email) {
+    public TaskResponds createTask(String title,String description, String email, Optional<LocalDate> dueDate, Optional<Priority> priority) {
+        if(dueDate.isPresent() && dueDate.get().isBefore(LocalDate.now())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Due date kann nicht vor dem jetzigen Datum sein");
         AppUser owner = getOwner(email);
-        AppTask task = taskRepository.saveAndFlush(new AppTask(info.title(),State.CREATED, info.description(),owner ));
+        AppTask task = new AppTask(title,State.CREATED, description,owner);
+        dueDate.ifPresent(task::setDueDate);
+        priority.ifPresent(task::setPriority);
+
+        taskRepository.saveAndFlush(task);
+
         return new TaskResponds(task);
     }
 
@@ -106,14 +103,16 @@ public class TaskService {
         return comments;
     }
 
-    public TaskResponds patchTask(Long taskId, String author, Optional<String> title, Optional<String> description) {
-        if(title.isEmpty() && description.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Es muss mindestens ein Titel oder eine Dewscription angegeben werden");
+    public TaskResponds patchTask(Long taskId, String author, Optional<String> title, Optional<String> description, Optional<LocalDate> dueDate, Optional<Priority> priority) {
+        if(title.isEmpty() && description.isEmpty() && dueDate.isEmpty() && priority.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Es muss mindestens ein Titel oder eine Dewscription angegeben werden");
         if(description.isPresent() && description.get().isBlank() || title.isPresent() && title.get().isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Es dürfen keine leeren Angaben gemacht werden");
 
         AppTask task = checkIfTaskExistsAndCorrectOwner(taskId,author);
 
         title.ifPresent(task::setTitle);
         description.ifPresent(task::setDescription);
+        dueDate.ifPresent(task::setDueDate);
+        priority.ifPresent(task::setPriority);
 
         taskRepository.saveAndFlush(task);
         return new TaskResponds(task);

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,22 +23,18 @@ public class TaskController {
     }
 
     @GetMapping("/api/tasks")
-    public ResponseEntity<List<TaskResponds>> getTasks(@RequestParam(required = false) String author, @RequestParam(required = false) String assignee) {
-        if(author != null && assignee != null) {
-            return ResponseEntity.ok(service.getAllTasksByOwnerAndAssignee(author,assignee));
-        }
-        if(author == null && assignee != null) {
-            return ResponseEntity.ok(service.getAllTasksByAssignee(assignee));
-        }
-        if(author != null) {
-            return ResponseEntity.ok(service.getAllTasksByOwner(author));
-        }
-        return ResponseEntity.ok(service.getAllTasks());
+    public ResponseEntity<List<TaskResponds>> getTasks(@RequestParam(required = false) String author, @RequestParam(required = false) String assignee, @RequestParam(required = false) Priority priority, @RequestParam(required = false) Boolean overdue) {
+        Optional<String> authorOptional = Optional.of(author);
+        Optional<String> assigneeOptional = Optional.of(assignee);
+        Optional<Priority> priorityOptional = Optional.of(priority);
+        Optional<Boolean> overdueOptional = Optional.of(overdue);
+
+        return ResponseEntity.ok(service.getTasks(authorOptional,assigneeOptional,priorityOptional,overdueOptional));
     }
 
     @PostMapping("/api/tasks")
     public ResponseEntity<TaskResponds> setTask(@Valid @RequestBody TaskInfo info, Authentication authentication) {
-        return ResponseEntity.ok(service.createTask(info, authentication.getName()));
+        return ResponseEntity.ok(service.createTask(info.title(),info.description(), authentication.getName(), info.due_date(),info.priority()));
     }
 
     @PutMapping("/api/tasks/{id}/assign")
@@ -63,7 +60,7 @@ public class TaskController {
 
     @PatchMapping("/api/tasks/{taskId}")
     public ResponseEntity<TaskResponds> patchTask(@PathVariable("taskId") Long taskId, @RequestBody TaskPatchRequest patchRequest, Authentication authentication) {
-        return ResponseEntity.ok(service.patchTask(taskId,authentication.getName(),patchRequest.title(),patchRequest.description()));
+        return ResponseEntity.ok(service.patchTask(taskId,authentication.getName(),patchRequest.title(),patchRequest.description(),patchRequest.dueDate(),patchRequest.priority()));
     }
 
     @DeleteMapping("/api/tasks/{taskId}")
@@ -84,13 +81,13 @@ public class TaskController {
         return ResponseEntity.noContent().build();
     }
 
-    public record TaskPatchRequest(Optional<String> title, Optional<String> description) {}
+    public record TaskPatchRequest(Optional<String> title, Optional<String> description, Optional<LocalDate> dueDate, Optional<Priority> priority) {}
 
     public record TaskCommentRequest(@NotBlank String text){}
 
     public record StateRequest(@NotBlank String status){}
 
-    public record TaskInfo(@NotBlank String title, @NotBlank String description) {}
+    public record TaskInfo(@NotBlank String title, @NotBlank String description, Optional<LocalDate> due_date, Optional<Priority> priority) {}
 
     public record AssigneeRequest(@NotBlank String assignee){}
 }

@@ -3,6 +3,8 @@ package taskmanagement;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.time.LocalDate;
+
 public class TaskResponds {
     private String id;
     private String title;
@@ -15,6 +17,13 @@ public class TaskResponds {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Integer total_comments;
 
+    @JsonProperty("due_date")
+    private LocalDate dueDate;
+
+    private Priority priority;
+
+    private boolean overdue;
+
     public TaskResponds(AppTask task, Integer totalComments) {
         this.id = String.valueOf(task.getId());
         this.title = task.getTitle();
@@ -23,6 +32,9 @@ public class TaskResponds {
         this.author = task.getOwner().getEmail();
         this.assignee = task.getAssignee() == null ? "none" : task.getAssignee();
         this.total_comments = totalComments;
+        this.dueDate = task.getDueDate();
+        this.priority = task.getPriority();
+        this.overdue = dueDate.isBefore(LocalDate.now()) && !status.equals(State.COMPLETED);
     }
 
     public TaskResponds(AppTask task) {
@@ -32,6 +44,9 @@ public class TaskResponds {
         this.status = task.getState();
         this.author = task.getOwner().getEmail();
         this.assignee = task.getAssignee() == null ? "none" : task.getAssignee();
+        this.dueDate = task.getDueDate();
+        this.priority = task.getPriority();
+        this.overdue = dueDate.isBefore(LocalDate.now()) && !status.equals(State.COMPLETED);
     }
 
     public String getId() {
@@ -88,5 +103,29 @@ public class TaskResponds {
 
     public void setAssignee(String assignee) {
         this.assignee = assignee;
+    }
+
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    public Priority getPriority() {
+        return priority;
+    }
+
+    public void setPriority(Priority priority) {
+        this.priority = priority;
+    }
+
+    public boolean isOverdue() {
+        return overdue;
+    }
+
+    public void setOverdue(boolean overdue) {
+        this.overdue = overdue;
     }
 }
