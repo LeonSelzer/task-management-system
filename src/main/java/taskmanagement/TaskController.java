@@ -2,13 +2,16 @@ package taskmanagement;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
+
 
 import java.time.LocalDate;
 import java.util.List;
@@ -24,8 +27,14 @@ public class TaskController {
     }
 
     @GetMapping("/api/tasks")
-    public ResponseEntity<List<TaskResponds>> getTasks(@RequestParam(required = false) Optional<String> author, @RequestParam(required = false) Optional<String> assignee, @RequestParam(required = false) Optional<Priority> priority, @RequestParam(required = false) Optional<Boolean> overdue) {
-        return ResponseEntity.ok(service.getTasks(author,assignee,priority,overdue));
+    public ResponseEntity<List<TaskResponds>> getTasks(@RequestParam(required = false) Optional<String> author, @RequestParam(required = false) Optional<String> assignee, @RequestParam(required = false)
+    Optional<Priority> priority, @RequestParam(required = false) Optional<Boolean> overdue, @RequestParam(defaultValue = "20") @Max(100) @Min(1) Integer size, @RequestParam(defaultValue = "0") @Min(0) Integer page,
+    @RequestParam(required = false) MultiValueMap<String,String> params, @RequestParam(required = false)@Valid Optional<State> status) {
+        Page<TaskResponds> taskRespondsPage = service.getTasks(author,assignee,priority,overdue,size,page,params,status);
+        return ResponseEntity.ok()
+                .header("X-Total-Count",String.valueOf(taskRespondsPage.getTotalElements()))
+                .header("X-Total-Pages",String.valueOf(taskRespondsPage.getTotalPages()))
+                .body(taskRespondsPage.getContent());
     }
 
     @PostMapping("/api/tasks")

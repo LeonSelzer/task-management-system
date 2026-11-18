@@ -1,15 +1,20 @@
 package taskmanagement;
 
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class TaskService {
@@ -20,13 +25,25 @@ public class TaskService {
     private final UserRepository userRepository;
     private final TaskCommentRepository taskCommentRepository;
 
+    private static final HashMap<String,String> whiteList;
+
+    static {
+        whiteList = new HashMap<>();
+        whiteList.put("id","id");
+        whiteList.put("title","title");
+        whiteList.put("due_date","dueDate");
+    }
+
     public TaskService(TaskRepository repository, UserRepository userRepository, TaskCommentRepository taskCommentRepository) {
         this.taskRepository = repository;
         this.userRepository = userRepository;
         this.taskCommentRepository = taskCommentRepository;
     }
 
-    public List<TaskResponds> getTasks(Optional<String> email, Optional<String> assignee, Optional<Priority> priority, Optional<Boolean> overdue) {
+    public Page<TaskResponds> getTasks(Optional<String> email, Optional<String> assignee, Optional<Priority> priority, Optional<Boolean> overdue, Integer size, Integer page, MultiValueMap<String,String> params, Optional<State> state) {
+        Sort sort = generateSort(params).and(Sort.by("id").descending());
+        Pageable pageable = PageRequest.of(page,size,sort);
+
         Specification<AppTask> spec = Specification.unrestricted();
 
         String mail = email.map(this::normalizeEmail).orElse(null);
@@ -45,9 +62,12 @@ public class TaskService {
             if(overdue.get()) spec = spec.and(TaskSpecifications.isOverdue());
             else spec = spec.and(Specification.not(TaskSpecifications.isOverdue()));
         }
+        if(state.isPresent()) spec = spec.and(TaskSpecifications.hasState(state.get()));
 
-        return toResponses(taskRepository.findAll(spec,Sort.by("id").descending()));
+        Page<AppTask> appTaskPage = taskRepository.findAll(spec,pageable);
+        Map<Long,Integer> countsById = getCountsByTaskId(appTaskPage.getContent());
 
+        return appTaskPage.map(task -> new TaskResponds(task,countsById.getOrDefault(task.getId(),0)));
 
 
     }
@@ -163,26 +183,13 @@ public class TaskService {
         return email.toLowerCase(Locale.ROOT);
     }
 
-    private List<TaskResponds> toResponses(Iterable<AppTask> tasks) {
-        List<AppTask> taskList = new ArrayList<>();
-
-        tasks.forEach(taskList::add);
-
-        List<Long> taskIds = taskList.stream()
+    private Map<Long,Integer> getCountsByTaskId(Collection<AppTask> tasks) {
+        List<Long> taskIds = tasks.stream()
                 .map(AppTask::getId)
                 .toList();
 
-        Map<Long, Integer> countsByTaskId = new HashMap<>();
-        for(TaskCommentRepository.CommentCount count : taskCommentRepository.countByTaskIds(taskIds)){
-            countsByTaskId.put(count.getTaskId(), count.getTotalComments());
-        }
-
-        List<TaskResponds> responses = new ArrayList<>();
-        for(AppTask task : taskList) {
-            responses.add(new TaskResponds(task,countsByTaskId.getOrDefault(task.getId(),0)));
-        }
-
-        return responses;
+        return  taskCommentRepository.countByTaskIds(taskIds).stream()
+                .collect(Collectors.toMap((TaskCommentRepository.CommentCount::getTaskId), TaskCommentRepository.CommentCount::getTotalComments));
     }
 
     private State getState(String newState) {
@@ -211,5 +218,37 @@ public class TaskService {
         return taskCommentRepository.findByIdAndTaskId(commentId,taskId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Der Task mit der Id " + taskId  + " existiert nicht oder der Kommentar mit der Id " + commentId + " gehört nicht zu der Task" ));
     }
+
+    private Sort generateSort(MultiValueMap<String,String> params) {
+        List<String> sorts = params.getOrDefault("sort",List.of());
+        List<Sort.Order> orders = sorts.stream()
+                .map(this::parseOrder)
+                .toList();
+        return Sort.by(orders);
+    }
+
+    private Sort.Order parseOrder(String value) {
+        String[] parts = value.split(",");
+        if (parts.length > 2) throw badRequest("Ungültiges Sortierformat: " + value);
+
+        String property = whiteList.get(parts[0].trim());
+        if (property == null) throw badRequest("Unbekanntes Sortierfeld: " + parts[0]);
+
+        Sort.Direction direction = parts.length == 2 ? parseDirection(parts[1]) : Sort.Direction.ASC;
+        return new Sort.Order(direction, property);
+    }
+
+    private Sort.Direction parseDirection(String value) {
+        try {
+            return Sort.Direction.fromString(value);
+        }catch (IllegalArgumentException ex) {
+            throw badRequest("Ungültiges Sortierformat: " + value);
+        }
+    }
+
+    private ResponseStatusException badRequest(String message) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    }
+
 
 }

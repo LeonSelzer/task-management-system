@@ -32,4 +32,8 @@ public final class TaskSpecifications {
         return ((root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("priority"), priority));
     }
 
+    public static Specification<AppTask> hasState(State state) {
+        return ((root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("state"), state));
+    }
+
 }
